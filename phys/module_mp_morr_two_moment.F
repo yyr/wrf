@@ -37,10 +37,13 @@
 ! additional fixes:
 ! 5) TEMPERATURE FOR ACCELERATED MELTING DUE TO COLLIIONS OF SNOW AND GRAUPEL
 !    WITH RAIN SHOULD USE CELSIUS, NOT KELVIN (BUG REPORTED BY K. VAN WEVERBERG)
-! 6) NPRACS IS NO SUBTRACTED SUBTRACTED FROM SNOW NUMBER CONCENTRATION, SINCE
+! 6) NPRACS IS NOT SUBTRACTED FROM SNOW NUMBER CONCENTRATION, SINCE
 !    DECREASE IN SNOW NUMBER IS ALREADY ACCOUNTED FOR BY NSMLTS 
 ! 7) fix for switch for running w/o graupel/hail (cloud ice and snow only)
 
+! hm bug fix 3/16/12
+
+! 1) very minor change to limits on autoconversion source of rain number when cloud water is depleted
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1286,7 +1289,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! fix 053011
 !            AIN(K) = DUM*AI
 ! AA revision 4/1/11: Ikawa and Saito 1991 air-density correction 
-            AIN(K) = (RHOSU/RHO(K))**0.35
+            AIN(K) = (RHOSU/RHO(K))**0.35*AI
             ARN(K) = DUM*AR
             ASN(K) = DUM*AS
 !            ACN(K) = DUM*AC
@@ -1548,7 +1551,9 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         NPRC1(K) = PRC(K)/CONS29
         NPRC(K) = PRC(K)/(QC3D(k)/NC3D(K))
 
+! hm bug fix 3/20/12
                 NPRC(K) = MIN(NPRC(K),NC3D(K)/DT)
+                NPRC1(K) = MIN(NPRC1(K),NPRC(K))
 
          END IF
 
@@ -2233,7 +2238,9 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         NPRC1(K) = PRC(K)/CONS29
         NPRC(K) = PRC(K)/(QC3D(K)/NC3D(K))
 
+! hm bug fix 3/20/12
                 NPRC(K) = MIN(NPRC(K),NC3D(K)/DT)
+                NPRC1(K) = MIN(NPRC1(K),NPRC(K))
 
          END IF
 

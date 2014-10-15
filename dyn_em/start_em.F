@@ -31,6 +31,7 @@
    USE module_gocart_aerosols, ONLY: sum_pm_gocart
    USE module_mosaic_driver, ONLY: sum_pm_mosaic
    USE module_input_tracer, ONLY: initialize_tracer
+   USE module_aerosols_soa_vbs, only: sum_pm_soa_vbs
 #endif
 
 !!debug
@@ -100,6 +101,9 @@
 
    REAL :: w_max, w_min
    LOGICAL :: w_needs_to_be_set
+!  
+! paj: define variable local
+   REAL    :: alpha
 
    CALL get_ijk_from_grid ( grid ,                              &
                            ids, ide, jds, jde, kds, kde,        &
@@ -125,32 +129,6 @@
          grid%id,ide,ids,config_flags%parent_grid_ratio,jde,jds,config_flags%parent_grid_ratio
       CALL wrf_error_fatal ( message )
    END IF
-
-!   --- SETUP AND INITIALIZE STOCHASTIC KINETIC ENERGY BACKSCATTER SCHEME ---
-
-   IF ( (grid%id==1).and.(grid%stoch_force_global_opt==1) .AND. ( .NOT. grid%did_stoch ) ) THEN
-
-     grid%did_stoch = .TRUE.
-     IF ( wrf_dm_on_monitor () ) THEN
-       CALL rand_seed ( config_flags, grid%SEED1, grid%SEED2, grid%NENS )
-     ENDIF
-#ifdef DM_PARALLEL
-     CALL wrf_dm_bcast_bytes ( grid%SEED1, IWORDSIZE )
-     CALL wrf_dm_bcast_bytes ( grid%SEED2, IWORDSIZE )
-#endif
-
-     call SETUP_STOCH(grid%VERTSTRUCC,grid%VERTSTRUCS,                   &
-                      grid%SPT_AMP,grid%SPSTREAM_AMP,                    &
-                      grid%stoch_vertstruc_opt,                          & 
-                      grid%SEED1,grid%SEED2,grid%time_step,              &
-                      grid%DX,grid%DY,                                   &
-                      grid%TOT_BACKSCAT_PSI,grid%TOT_BACKSCAT_T,         &
-                      ids, ide, jds, jde, kds, kde,                      &
-                      ims, ime, jms, jme, kms, kme,                      &
-                      its, ite, jts, jte, kts, kte                       )
-    
-    END IF
-!   --- END SETUP STOCHASTIC KINETIC ENERGY BACKSCATTER SCHEME ----------
 
    IF ( config_flags%polar ) THEN
 !write(0,*)__FILE__,__LINE__,' clat ',ips,ipe,jps,jpe
@@ -197,6 +175,38 @@
    IF ( config_flags%restart .or. grid%moved ) THEN
        first_trip_for_this_domain = .TRUE.
    ENDIF
+
+!   --- SETUP AND INITIALIZE STOCHASTIC KINETIC ENERGY BACKSCATTER SCHEME ---
+
+   IF ( first_trip_for_this_domain ) THEN
+     grid%did_stoch = .FALSE.
+   END IF
+
+   IF ( ( grid%id == 1 ) .AND. &
+        ( NINT(grid%stoch_force_global_opt) == 1 ) .AND. &
+        ( .NOT. grid%did_stoch ) ) THEN
+
+     grid%did_stoch = .TRUE.
+     IF ( wrf_dm_on_monitor () ) THEN
+       CALL rand_seed ( config_flags, grid%SEED1, grid%SEED2, grid%NENS )
+     ENDIF
+#ifdef DM_PARALLEL
+     CALL wrf_dm_bcast_bytes ( grid%SEED1, IWORDSIZE )
+     CALL wrf_dm_bcast_bytes ( grid%SEED2, IWORDSIZE )
+#endif
+
+     call SETUP_STOCH(grid%VERTSTRUCC,grid%VERTSTRUCS,                   &
+                      grid%SPT_AMP,grid%SPSTREAM_AMP,                    &
+                      grid%stoch_vertstruc_opt,                          & 
+                      grid%SEED1,grid%SEED2,grid%time_step,              &
+                      grid%DX,grid%DY,                                   &
+                      grid%TOT_BACKSCAT_PSI,grid%TOT_BACKSCAT_T,         &
+                      ids, ide, jds, jde, kds, kde,                      &
+                      ims, ime, jms, jme, kms, kme,                      &
+                      its, ite, jts, jte, kts, kte                       )
+    
+    END IF
+!   --- END SETUP STOCHASTIC KINETIC ENERGY BACKSCATTER SCHEME ----------
 
 ! wig: Add a combined exponential+linear weight on the mother boundaries
 !      following code changes by Ruby Leung. For the nested grid, there
@@ -708,6 +718,10 @@
                       ims, ime, jms, jme, kms, kme,           &
                       grid%i_start(ij), grid%i_end(ij), grid%j_start(ij), grid%j_end(ij), kts, kte, &
                       config_flags%num_urban_layers,                        & !multi-layer urban
+                      grid%raincv_a,grid%raincv_b,                                    &
+                      grid%gd_cloud, grid%gd_cloud2,                                  & ! Optional
+                      grid%gd_cloud_a, grid%gd_cloud2_a,                              & ! Optional
+                      grid%gd_cloud_b, grid%gd_cloud2_b,                              & ! Optional
                       ozmixm,grid%pin,                             &     ! Optional
                       grid%m_ps_1,grid%m_ps_2,grid%m_hybi,aerosolc_1,aerosolc_2,&  ! Optional
                       grid%rundgdten,grid%rvndgdten,grid%rthndgdten,         &     ! Optional
@@ -715,6 +729,14 @@
                       grid%FGDT,grid%stepfg,                        &     ! Optional
                       grid%cugd_tten,grid%cugd_ttens,grid%cugd_qvten,        &   ! Optional
                       grid%cugd_qvtens,grid%cugd_qcten,                 &   ! Optional
+                      grid%ISNOWXY, grid%ZSNSOXY, grid%TSNOXY,                                  &   ! Optional Noah-MP
+                      grid%SNICEXY, grid%SNLIQXY, grid%TVXY, grid%TGXY, grid%CANICEXY,          &   ! Optional Noah-MP
+                      grid%CANLIQXY, grid%EAHXY, grid%TAHXY, grid%CMXY,                         &   ! Optional Noah-MP
+                      grid%CHXY, grid%FWETXY, grid%SNEQVOXY, grid%ALBOLDXY, grid%QSNOWXY,       &   ! Optional Noah-MP
+                      grid%WSLAKEXY, grid%ZWTXY, grid%WAXY, grid%WTXY, grid%LFMASSXY, grid%RTMASSXY, & ! Optional Noah-MP
+                      grid%STMASSXY, grid%WOODXY, grid%STBLCPXY, grid%FASTCPXY,                 &   ! Optional Noah-MP
+                      grid%XSAIXY,                                                              &   ! Optional Noah-MP
+                      grid%T2MVXY, grid%T2MBXY, grid%CHSTARXY,                                  &   ! Optional Noah-MP
                       grid%DZR, grid%DZB, grid%DZG,                          & !Optional urban
                       grid%TR_URB2D,grid%TB_URB2D,grid%TG_URB2D,grid%TC_URB2D,    & !Optional urban
                       grid%QC_URB2D, grid%XXXR_URB2D,grid%XXXB_URB2D,        & !Optional urban
@@ -738,6 +760,9 @@
                       grid%TYR, grid%TYRA, grid%TDLY, grid%TLAG, grid%NYEAR, grid%NDAY,grid%tmn_update, &
                       grid%achfx, grid%aclhf, grid%acgrdflx                 &
                       ,grid%te_temf,grid%cf3d_temf,grid%wm_temf        & ! WA
+                      ,grid%massflux_EDKF, grid%entr_EDKF, grid%detr_EDKF                & 
+                      ,grid%thl_up,grid%thv_up,grid%rt_up                                &
+                      ,grid%rv_up,grid%rc_up,grid%u_up,grid%v_up,grid%frac_up            &
                       )
        ENDIF   !tgs
 
@@ -943,6 +968,8 @@
 
 
 ! set up slope-radiation constant arrays based on topography
+! paj: also computes laplacian for topo_wind
+!
        DO j = jts,min(jte,jde-1)
        DO i = its, min(ite,ide-1)
           im1 = max(i-1,ids)
@@ -951,6 +978,7 @@
           jp1 = min(j+1,jde-1)
           grid%toposlpx(i,j)=(grid%ht(ip1,j)-grid%ht(im1,j))*grid%msftx(i,j)*grid%rdx/(ip1-im1)
           grid%toposlpy(i,j)=(grid%ht(i,jp1)-grid%ht(i,jm1))*grid%msfty(i,j)*grid%rdy/(jp1-jm1)
+          grid%lap_hgt(i,j)=(grid%ht(ip1,j)+grid%ht(im1,j)+grid%ht(i,jp1)+grid%ht(i,jm1)-grid%ht(i,j)*4.)/4.
              hx = grid%toposlpx(i,j)
              hy = grid%toposlpy(i,j)
              pi = 4.*atan(1.)
@@ -970,6 +998,42 @@
              endif
        ENDDO
        ENDDO
+!
+! paj: computes ct and ct2 for topo_wind
+!
+       grid%ctopo=1.
+       grid%ctopo2=1.
+!
+       if (config_flags%topo_wind.eq.1) then
+         DO j = jts,min(jte,jde-1)
+         DO i = its, min(ite,ide-1)
+            if(grid%xland(i,j).lt.1.5)grid%ctopo(i,j)=sqrt(grid%var_sso(i,j))
+            if (grid%ctopo(i,j).le.2.718) then
+            grid%ctopo(i,j)=1.
+            else
+            grid%ctopo(i,j)=alog(grid%ctopo(i,j))
+            endif
+!
+            if (grid%lap_hgt(i,j).gt.-10.) then
+              grid%ctopo(i,j)=grid%ctopo(i,j)
+            else
+               if (grid%lap_hgt(i,j).ge.-20) then
+                 alpha=(grid%lap_hgt(i,j)+20.)/10.
+                 grid%ctopo(i,j)=alpha*grid%ctopo(i,j)+(1-alpha)
+               else
+                  if (grid%lap_hgt(i,j).ge.-30.) then
+                  grid%ctopo(i,j)=(grid%lap_hgt(i,j)+30.)/10.
+                  grid%ctopo2(i,j)=(grid%lap_hgt(i,j)+30.)/10.
+                  else
+                  grid%ctopo(i,j)=0.
+                  grid%ctopo2(i,j)=0.
+                  endif
+               endif
+            endif
+         ENDDO
+         ENDDO
+       endif
+
    END IF
 
    CALL set_physical_bc3d( grid%w_1 , 'W' , config_flags ,                 &
@@ -1137,9 +1201,6 @@
                          grid%aerwrf,config_flags,grid,            &
                          grid%alt,grid%t_1,grid%p,convfac,grid%ttday,grid%tcosz,         &
                          grid%julday,grid%gmt,&
-                         grid%gd_cloud, grid%gd_cloud2,grid%raincv_a,grid%raincv_b,     &
-                         grid%gd_cloud_a, grid%gd_cloud2_a,                              &
-                         grid%gd_cloud_b, grid%gd_cloud2_b,                              &
                          grid%tauaer1,grid%tauaer2,grid%tauaer3,grid%tauaer4,                   &
                          grid%gaer1,grid%gaer2,grid%gaer3,grid%gaer4,                           &
                          grid%waer1,grid%waer2,grid%waer3,grid%waer4,                           &
@@ -1172,13 +1233,20 @@
                 ids,ide, jds,jde, kds,kde,                                  &
                 ims,ime, jms,jme, kms,kme,                                  &
                 its,ite, jts,jte, kts,kte-1                                 )
-        case (RADM2SORG,RADM2SORG_AQ,RADM2SORG_KPP,RACMSORG_AQ,RACMSORG_KPP)
+        case (RADM2SORG,RADM2SORG_AQ,RADM2SORG_AQCHEM,RADM2SORG_KPP,RACMSORG_AQ,RACMSORG_AQCHEM,RACMSORG_KPP)
            call sum_pm_sorgam (                                             &
                 grid%alt, chem, grid%h2oaj, grid%h2oai,                                    &
                 grid%pm2_5_dry, grid%pm2_5_water, grid%pm2_5_dry_ec, grid%pm10,                 &
                 grid%dust_opt,ids,ide, jds,jde, kds,kde,                    &
                 ims,ime, jms,jme, kms,kme,                                  &
                 its,ite, jts,jte, kts,kte-1                                 )
+         case (RACM_SOA_VBS_KPP)
+             call sum_pm_soa_vbs (                                           &
+                 grid%alt, chem, grid%h2oaj, grid%h2oai,                                   &
+                 grid%pm2_5_dry, grid%pm2_5_water, grid%pm2_5_dry_ec, grid%pm10,                &
+                 config_flags%dust_opt,ids,ide, jds,jde, kds,kde,           &
+                 ims,ime, jms,jme, kms,kme,                                 &
+                 its,ite, jts,jte, kts,kte-1                                )
 
         case (CBMZ_MOSAIC_4BIN,CBMZ_MOSAIC_8BIN,CBMZ_MOSAIC_4BIN_AQ,CBMZ_MOSAIC_8BIN_AQ, &
               CBMZ_MOSAIC_DMS_4BIN, CBMZ_MOSAIC_DMS_8BIN, CBMZ_MOSAIC_DMS_4BIN_AQ,       &
