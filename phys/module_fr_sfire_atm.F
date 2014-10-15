@@ -55,6 +55,108 @@ SUBROUTINE fire_tendency( &
    REAL, INTENT(out), DIMENSION( ims:ime,kms:kme,jms:jme ) ::   &
        rthfrten, & ! theta tendency from fire (in mass units)
        rqvfrten    ! Qv tendency from fire (in mass units)
+! --- local variables
+
+   INTEGER :: i,j,k
+   INTEGER :: i_st,i_en, j_st,j_en, k_st,k_en
+
+   REAL :: cp_i
+   REAL :: rho_i
+   REAL :: xlv_i
+   REAL :: z_w
+   REAL :: fact_g, fact_c
+
+   REAL, DIMENSION( its:ite,kts:kte,jts:jte ) :: hfx,qfx
+   
+!!   character(len=128)::msg
+
+! --- set some local constants
+   
+
+   cp_i = 1./cp     ! inverse of specific heat
+   xlv_i = 1./xlv   ! inverse of latent heat
+
+!!write(msg,'(8e11.3)')cp,cp_i,xlv,xlv_i,alfg,alfc,z1can
+!!call message(msg)
+
+   call print_2d_stats(its,ite,jts,jte,ims,ime,jms,jme,grnhfx,'fire_tendency:grnhfx')
+   call print_2d_stats(its,ite,jts,jte,ims,ime,jms,jme,grnqfx,'fire_tendency:grnqfx')
+
+! --- set loop indicies : note that 
+
+   i_st = MAX(its,ids+1)
+   i_en = MIN(ite,ide-1)
+   k_st = kts
+   k_en = MIN(kte,kde-1)
+   j_st = MAX(jts,jds+1)
+   j_en = MIN(jte,jde-1)
+
+! --- distribute fluxes
+
+   DO j = j_st,j_en
+      DO k = k_st,k_en
+         DO i = i_st,i_en
+
+            ! --- set z (in meters above ground)
+
+            z_w = z_at_w(i,k,j) - zs(i,j) ! should be zero when k=k_st
+
+            ! --- heat flux
+
+            fact_g = cp_i * EXP( - alfg * z_w )
+            IF ( z_w < z1can ) THEN
+               fact_c = cp_i
+            ELSE
+               fact_c = cp_i * EXP( - alfc * (z_w - z1can) )
+            END IF
+            hfx(i,k,j) = fact_g * grnhfx(i,j) + fact_c * canhfx(i,j) 
+
+!!            write(msg,2)i,k,j,z_w,grnhfx(i,j),hfx(i,k,j)
+!!2           format('hfx:',3i4,6e11.3)
+!!            call message(msg)
+
+            ! --- vapor flux
+
+            fact_g = xlv_i * EXP( - alfg * z_w )
+            IF (z_w < z1can) THEN
+               fact_c = xlv_i
+            ELSE
+               fact_c = xlv_i * EXP( - alfc * (z_w - z1can) )
+            END IF
+            qfx(i,k,j) = fact_g * grnqfx(i,j) + fact_c * canqfx(i,j) 
+            
+!!            if(hfx(i,k,j).ne.0. .or. qfx(i,k,j) .ne. 0.)then
+!!                write(msg,1)i,k,j,hfx(i,k,j),qfx(i,k,j)
+!!1               format('tend:',3i6,2e11.3)
+!!                call message(msg)
+!            endif
+
+         END DO
+      END DO
+   END DO
+
+! --- add flux divergence to tendencies
+!
+!   multiply by dry air mass (mu) to eliminate the need to 
+!   call sr. calculate_phy_tend (in dyn_em/module_em.F)
+
+   DO j = j_st,j_en
+      DO k = k_st,k_en-1
+         DO i = i_st,i_en
+
+            rho_i = 1./rho(i,k,j)
+
+            rthfrten(i,k,j) = - mu(i,j) * rho_i * (hfx(i,k+1,j)-hfx(i,k,j)) / dz8w(i,k,j)
+            rqvfrten(i,k,j) = - mu(i,j) * rho_i * (qfx(i,k+1,j)-qfx(i,k,j)) / dz8w(i,k,j)
+
+         END DO
+      END DO
+   END DO
+
+   call print_3d_stats(its,ite,kts,kte,jts,jte,ims,ime,kms,kme,jms,jme,rthfrten,'fire_tendency:rthfrten')
+   call print_3d_stats(its,ite,kts,kte,jts,jte,ims,ime,kms,kme,jms,jme,rqvfrten,'fire_tendency:rqvfrten')
+
+   RETURN
 
 END SUBROUTINE fire_tendency
 

@@ -4,7 +4,7 @@ MODULE module_optional_input
               flag_snow     , flag_snowh    , flag_tsk
 
    INTEGER :: flag_qv       , flag_qc       , flag_qr       , flag_qi       , flag_qs       , &
-              flag_qg       , flag_qni
+              flag_qg       , flag_qni      , flag_sh
 
    INTEGER :: flag_soil_levels, flag_soil_layers
 
@@ -37,8 +37,8 @@ CONTAINS
 
    SUBROUTINE init_module_optional_input ( grid , config_flags ) 
 
-      USE module_domain
-      USE module_configure
+      USE module_domain	, ONLY : domain
+      USE module_configure , ONLY : grid_config_rec_type
 
       IMPLICIT NONE 
 
@@ -102,8 +102,8 @@ CONTAINS
    SUBROUTINE optional_input ( grid , fid, config_flags )
 
       USE module_io_domain
-      USE module_configure      
-      USE module_domain
+      USE module_configure       , ONLY : grid_config_rec_type
+      USE module_domain	, ONLY : domain
 
       IMPLICIT NONE 
 
@@ -222,8 +222,7 @@ CONTAINS
             ( model_config_rec%sf_surface_physics(grid%id) .EQ. 2 ) .OR. &
             ( model_config_rec%sf_surface_physics(grid%id) .EQ. 3 ) .OR. &
             ( model_config_rec%sf_surface_physics(grid%id) .EQ. 7 ) .OR. &
-            ( model_config_rec%sf_surface_physics(grid%id) .EQ. 88 ).OR. &
-            ( model_config_rec%sf_surface_physics(grid%id) .EQ. 99 ) ) THEN
+            ( model_config_rec%sf_surface_physics(grid%id) .EQ. 88 ) ) THEN
    
          CALL optional_lsm_levels ( grid , fid , &
                                     ids, ide, jds, jde, kds, kde, &
@@ -241,9 +240,9 @@ CONTAINS
                                its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
+      USE module_domain	, ONLY : domain
 
-USE module_configure
+USE module_configure , ONLY : grid_config_rec_type
 USE module_io_domain
 
       IMPLICIT NONE 
@@ -264,6 +263,7 @@ USE module_io_domain
       flag_qs       = 0
       flag_qg       = 0
       flag_qni      = 0
+      flag_sh       = 0
 
       flag_name(1:8) = 'QV      '
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
@@ -300,6 +300,11 @@ USE module_io_domain
       IF ( ierr .EQ. 0 ) THEN
          flag_qni       = itmp
       END IF
+      flag_name(1:8) = 'SH      '
+      CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
+      IF ( ierr .EQ. 0 ) THEN
+         flag_sh       = itmp
+      END IF
     
    END SUBROUTINE optional_moist
 
@@ -311,8 +316,8 @@ USE module_io_domain
                                  its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
-USE module_configure
+      USE module_domain	, ONLY : domain
+USE module_configure , ONLY : grid_config_rec_type
 USE module_io_domain
 
       IMPLICIT NONE 
@@ -354,8 +359,8 @@ USE module_io_domain
                              its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
-USE module_configure
+      USE module_domain	, ONLY : domain
+USE module_configure , ONLY : grid_config_rec_type
 USE module_io_domain
 
       IMPLICIT NONE 
@@ -387,8 +392,8 @@ USE module_io_domain
                                  its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
-USE module_configure
+      USE module_domain	, ONLY : domain
+USE module_configure , ONLY : grid_config_rec_type
 USE module_io_domain
 
       IMPLICIT NONE 
@@ -420,8 +425,8 @@ USE module_io_domain
                                  its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
-USE module_configure
+      USE module_domain	, ONLY : domain
+USE module_configure , ONLY : grid_config_rec_type
 USE module_io_domain
 
       IMPLICIT NONE 
@@ -453,8 +458,8 @@ USE module_io_domain
                                its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
-USE module_configure
+      USE module_domain	, ONLY : domain
+USE module_configure , ONLY : grid_config_rec_type
 USE module_io_domain
 
       IMPLICIT NONE 
@@ -495,8 +500,8 @@ USE module_io_domain
                              its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
-USE module_configure
+      USE module_domain	, ONLY : domain
+USE module_configure , ONLY : grid_config_rec_type
 USE module_io_domain
 
       IMPLICIT NONE 
@@ -552,8 +557,8 @@ USE module_io_domain
                                     its, ite, jts, jte, kts, kte  )
 
       USE module_io_wrf
-      USE module_domain
-      USE module_configure
+      USE module_domain	, ONLY : domain
+      !USE module_configure , ONLY : grid_config_rec_type
       USE module_io_domain
 
       IMPLICIT NONE 
