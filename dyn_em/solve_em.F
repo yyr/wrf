@@ -10,7 +10,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
    USE module_domain, ONLY : &
                   domain, get_ijk_from_grid, get_ijk_from_subgrid                          &
                  ,domain_get_current_time, domain_get_start_time                           &
-                 ,domain_get_sim_start_time, domain_clock_get
+                 ,domain_get_sim_start_time, domain_clock_get,is_alarm_tstep
    USE module_domain_type, ONLY : history_alarm, restart_alarm
    USE module_configure, ONLY : grid_config_rec_type
    USE module_driver_constants
@@ -117,8 +117,8 @@ SUBROUTINE solve_em ( grid , config_flags  &
    ! Whether advection should produce decoupled horizontal and vertical advective tendency outputs
    LOGICAL                        :: tenddec
    
-   ! Flag for microphysics routines to produce diagnostic fields (e.g., radar reflectivity)
-   LOGICAL                        :: diagflag
+   ! Flag for producing diagnostic fields (e.g., radar reflectivity)
+   LOGICAL                        :: diag_flag
    
 #ifdef WRF_CHEM
    ! Index cross-referencing array for tendency accumulation
@@ -274,6 +274,14 @@ SUBROUTINE solve_em ( grid , config_flags  &
    ENDIF
 ! End of adaptive time step modifications
 !-----------------------------------------------------------------------------
+!
+! Set diagnostic flag value history output time
+!-----------------------------------------------------------------------------
+!  if ( Is_alarm_tstep(grid_clock, grid_alarms(HISTORY_ALARM)) ) then
+   diag_flag = .false.
+   if ( Is_alarm_tstep(grid%domain_clock, grid%alarms(HISTORY_ALARM)) ) then
+      diag_flag = .true.
+   endif
 
    grid%itimestep = grid%itimestep + 1
 
@@ -3185,18 +3193,20 @@ BENCH_START(micro_driver_tim)
 ! WRFU_AlarmIsRinging always returned false, so using an alternate  method to find out if it is time 
 ! to dump history/restart files so microphysics can be told to calculate things like radar reflectivity.
 !
-      diagflag = .false.
-      CALL WRFU_ALARMGET(grid%alarms( HISTORY_ALARM ),prevringtime=temp_time,RingInterval=intervaltime)
-      CALL WRFU_ALARMGET(grid%alarms( RESTART_ALARM ),prevringtime=restart_time,RingInterval=restartinterval)
-      CALL domain_clock_get ( grid, current_time=CurrTime )
-      old_dt=min(old_dt,grid%dt)
-      num = INT(old_dt * precision)
-      den = precision
-      CALL WRFU_TimeIntervalSet(dtInterval, Sn=num, Sd=den)
-      IF (CurrTime .ge. temp_time + intervaltime - dtInterval .or. &
-          CurrTime .ge. restart_time + restartinterval - dtInterval ) THEN
-        diagflag = .true.
-      ENDIF
+!     diagflag = .false.
+!     CALL WRFU_ALARMGET(grid%alarms( HISTORY_ALARM ),prevringtime=temp_time,RingInterval=intervaltime)
+!     CALL WRFU_ALARMGET(grid%alarms( RESTART_ALARM ),prevringtime=restart_time,RingInterval=restartinterval)
+!     CALL domain_clock_get ( grid, current_time=CurrTime )
+!     old_dt=min(old_dt,grid%dt)
+!     num = INT(old_dt * precision)
+!     den = precision
+!     CALL WRFU_TimeIntervalSet(dtInterval, Sn=num, Sd=den)
+!     IF (CurrTime .ge. temp_time + intervaltime - dtInterval .or. &
+!         CurrTime .ge. restart_time + restartinterval - dtInterval ) THEN
+!       diagflag = .true.
+!     ENDIF
+!     WRITE(wrf_err_message,*)'diag_flag=',diag_flag
+!     CALL wrf_debug ( 0 , wrf_err_message )
 
      CALL microphysics_driver(                                            &
       &         DT=dtm             ,DX=grid%dx              ,DY=grid%dy   &
@@ -3275,7 +3285,7 @@ BENCH_START(micro_driver_tim)
 ! YLIN
 ! RI_CURR INPUT
       &        , RI_CURR=grid%rimi                                          &
-      &        , diagflag=diagflag                                          &
+      &        , diagflag=diag_flag, do_radar_ref=config_flags%do_radar_ref &
                                                                           )
 BENCH_END(micro_driver_tim)
 
@@ -3923,6 +3933,63 @@ BENCH_END(bc_2d_tim)
         &           ,KTS=k_start, KTE=min(k_end,kde-1)                     &
         &           ,NUM_TILES=grid%num_tiles                              &
         &                                                          )
+   ENDIF
+
+   IF ( config_flags%p_lev_diags .NE. SKIP_PRESS_DIAGS ) THEN
+     !  Process the diags if this is the correct time step OR
+     !  if this is an adaptive timestep forecast.
+     IF ( ( ( MOD(NINT(curr_secs+grid%dt),NINT(config_flags%p_lev_interval)) .EQ. 0 ) ) .OR. &
+            ( config_flags%use_adaptive_time_step ) ) THEN
+       !$OMP PARALLEL DO   &
+       !$OMP PRIVATE ( ij )
+       DO ij = 1 , grid%num_tiles
+         CALL wrf_debug ( 200 , ' PLD: pressure level diags' )
+         CALL pld (                                  &
+                      !  Input data for computing
+                       U=grid%u_2                    &
+                      ,V=grid%v_2                    &
+                      ,W=grid%w_2                    &
+                      ,t=grid%t_2                    &
+                      ,qv=moist(:,:,:,P_QV)          &
+                      ,zp=grid%ph_2                  &
+                      ,zb=grid%phb                   &
+                      ,pp=grid%p                     &
+                      ,pb=grid%pb                    &
+                      ,p=grid%p_hyd                  &
+                      ,pw=grid%p_hyd_w               &
+                      !  Map factors, coriolis for diags
+                      ,msfux=grid%msfux              &
+                      ,msfuy=grid%msfuy              &
+                      ,msfvx=grid%msfvx              &
+                      ,msfvy=grid%msfvy              &
+                      ,msftx=grid%msftx              &
+                      ,msfty=grid%msfty              &
+                      ,f=grid%f                      &
+                      ,e=grid%e                      &
+                      !  Namelist info
+                      ,use_tot_or_hyd_p=config_flags%use_tot_or_hyd_p &
+                      ,missing=config_flags%p_lev_missing &
+                      !  The diagnostics, mostly output variables
+                      ,num_press_levels=config_flags%num_press_levels &
+                      ,max_press_levels=max_plevs    &
+                      ,press_levels=model_config_rec%press_levels &
+                      ,p_pl  = grid%p_pl             &
+                      ,u_pl  = grid%u_pl             &
+                      ,v_pl  = grid%v_pl             &
+                      ,t_pl  = grid%t_pl             &
+                      ,rh_pl = grid%rh_pl            &
+                      ,ght_pl= grid%ght_pl           &
+                      ,s_pl  = grid%s_pl             &
+                      ,td_pl = grid%td_pl            &
+                      !  Dimension arguments
+                      ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde    &
+                      ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme    &
+                      ,ITS=grid%i_start(ij),ITE=grid%i_end(ij)              &
+                      ,JTS=grid%j_start(ij),JTE=grid%j_end(ij)              &
+                      ,KTS=kps,KTE=kpe                                      )
+       END DO
+       !$OMP END PARALLEL DO
+     ENDIF
    ENDIF
 
 #ifdef DM_PARALLEL

@@ -45,27 +45,34 @@ SUBROUTINE med_before_solve_io ( grid , config_flags )
    INTEGER                                    :: rc
    TYPE(WRFU_Time) :: currTime, startTime
 #ifdef HWRF
-!zhang's doing
-!   TYPE(WRFU_Time) :: CurrTime  !zhang new
    INTEGER :: hr, min, sec, ms,julyr,julday
    REAL :: GMT
-!end of zhang's doing
 #endif
 
    CHARACTER*256          :: message
 
-! #if (EM_CORE == 1)
-   CALL WRFU_ClockGet( grid%domain_clock, CurrTime=currTime, StartTime=startTime )
-   IF( WRFU_AlarmIsRinging( grid%alarms( HISTORY_ALARM ), rc=rc ) .AND. &
+
+ CALL WRFU_ClockGet( grid%domain_clock, CurrTime=currTime, StartTime=startTime )
+ 
+ IF( WRFU_AlarmIsRinging( grid%alarms( HISTORY_ALARM ), rc=rc ) .AND. &
        (grid%dfi_write_dfi_history .OR. grid%dfi_stage == DFI_FST .OR. grid%dfi_opt == DFI_NODFI) ) THEN
-! #else
-!   IF( WRFU_AlarmIsRinging( grid%alarms( HISTORY_ALARM ), rc=rc )) THEN
-! #endif
-     IF  ( (config_flags%restart) .AND. ( currTime .EQ. startTime ) ) THEN
+     IF       ( ( config_flags%restart )                    .AND. &
+#if (EM_CORE == 1)
+                ( config_flags%write_hist_at_0h_rst )       .AND. &
+#endif
+                ( currTime .EQ. startTime )                       ) THEN
        !  output history at beginning of restart if alarm is ringing
        CALL med_hist_out ( grid , HISTORY_ALARM, config_flags )
+      
+     ELSE IF  ( ( config_flags%restart )                    .AND. &
+#if (EM_CORE == 1)
+                ( .NOT. config_flags%write_hist_at_0h_rst ) .AND. &
+#endif
+                ( currTime .EQ. startTime )                       ) THEN
+       !  we do not do anything
      ELSE
        CALL med_hist_out ( grid , HISTORY_ALARM, config_flags )
+       
      END IF
      CALL WRFU_AlarmRingerOff( grid%alarms( HISTORY_ALARM ), rc=rc )
 #if (EM_CORE == 1)
@@ -86,7 +93,9 @@ SUBROUTINE med_before_solve_io ( grid , config_flags )
      IF ( .FALSE.) THEN
        rc = 1  ! dummy statement
      ELSE IF( WRFU_AlarmIsRinging( grid%alarms( ialarm ), rc=rc ) ) THEN
-       CALL med_hist_out ( grid , ialarm, config_flags )
+       IF ( grid%dfi_stage == DFI_FST .OR. grid%dfi_opt == DFI_NODFI ) THEN
+          CALL med_hist_out ( grid , ialarm, config_flags )
+       END IF
        CALL WRFU_AlarmRingerOff( grid%alarms( ialarm ), rc=rc )
      ENDIF
    ENDDO
@@ -1162,7 +1171,9 @@ SUBROUTINE med_last_solve_io ( grid , config_flags )
 !   IF( WRFU_AlarmIsRinging( grid%alarms( AUXHIST1_ALARM ), rc=rc ) ) THEN
 !     CALL med_hist_out ( grid , AUXHIST1_ALARM , config_flags )
 !   ENDIF
+   IF ( grid%dfi_stage == DFI_FST .OR. grid%dfi_opt == DFI_NODFI ) THEN
 #include "med_last_solve_io.inc"
+   END IF
 
 ! - RESTART OUTPUT
    IF( WRFU_AlarmIsRinging( grid%alarms( RESTART_ALARM ), rc=rc ) ) THEN
@@ -1240,17 +1251,24 @@ SUBROUTINE med_analysis_in ( grid , config_flags )
                          config_flags , "DATASET=RESTART", ierr )
 
    IF ( ierr .NE. 0 ) THEN
-      ! Could not open the analysis file, so notify user.
+      ! Could not open the analysis file, so notify user and abort.
 
-      write(message,'(A,I0,A,A,A)') 'WARNING: Domain ',grid%id,' analysis file ',trim(rstname),' is missing.'
-      call wrf_message(message)
+      write(message,'(A,I0,A,A,A)') 'ERROR: Domain ',grid%id,' analysis file ',trim(rstname),' is missing.'
+      call wrf_error_fatal(message)
+
+      ! It is unsafe to continue with a cold start when the analysis
+      ! file is missing because the model expects that it is being
+      ! restart if an analysis=T.  Hence, some variables will not be
+      ! correctly initialized.
+
+      ! Thus, we never reach this line:
       write(message,'(A,I0,A)') '-------> Domain ',grid%id,' running as a cold start (interp from parent).'
       call wrf_message(message)
 
-      IF ( wrf_dm_on_monitor() ) THEN
-         WRITE (message, '("Failing to read restart for domain ",I8)') grid%id
+      if(wrf_dm_on_monitor()) then
+         WRITE ( message , FMT = '("Failing to read restart for domain ",I8)' ) grid%id
          CALL end_timing ( TRIM(message) )
-      END IF
+      endif
 
       return
    ELSE
@@ -1295,6 +1313,12 @@ SUBROUTINE med_analysis_out ( grid , config_flags )
 !zhang   TYPE(ESMF_Time)                        :: CurrTime
    TYPE(WRFU_Time)                        :: CurrTime
    CHARACTER*80                           :: timestr
+
+   if(.not. config_flags%write_analysis) then
+      write(message,'("Writing of an analysis file is disabled for domain ",I0," because write_analysis=F")') grid%id
+      call wrf_debug(1,message)
+      return
+   endif
 
    IF ( wrf_dm_on_monitor() ) THEN
      CALL start_timing

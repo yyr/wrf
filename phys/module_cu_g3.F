@@ -11,7 +11,7 @@ CONTAINS
               ,rho,RAINCV,PRATEC                                &
               ,U,V,t,W,q,p,pi                                   &
               ,dz8w,p8w,XLV,CP,G,r_v                            &
-              ,STEPCU,htop,hbot                                 &
+              ,htop,hbot                                        &
               ,CU_ACT_FLAG,warm_rain                            &
               ,APR_GR,APR_W,APR_MC,APR_ST,APR_AS                &
               ,APR_CAPMA,APR_CAPME,APR_CAPMI                    &
@@ -50,7 +50,7 @@ CONTAINS
    integer, intent (in   )              ::                      &
                        ensdim,maxiens,maxens,maxens2,maxens3,ichoice
   
-   INTEGER,      INTENT(IN   ) :: STEPCU, ITIMESTEP,cugd_avedx, &
+   INTEGER,      INTENT(IN   ) :: ITIMESTEP,cugd_avedx, &
                                   ishallow_g3,imomentum
    LOGICAL,      INTENT(IN   ) :: warm_rain
 
@@ -752,7 +752,7 @@ CONTAINS
   ! hkb = moist static energy at originating level
   ! mentr_rate = entrainment rate
      real,    dimension (its:ite,kts:kte) ::                           &
-        he3,hes3,qes3,z3,zdo3,zu3_0,hc3_0,dby3_0,gamma3_0_cup,         &
+        he3,hes3,qes3,z3,zdo3,zu3_0,hc3_0,dby3_0,                      &
         qes3_cup,q3_cup,he3_cup,hes3_cup,z3_cup,gamma3_cup,t3_cup,     &
         xhe3,xhes3,xqes3,xz3,xt3,xq3,                                  &
         xqes3_cup,xq3_cup,xhe3_cup,xhes3_cup,xz3_cup,xgamma3_cup,      &
@@ -1266,7 +1266,7 @@ CONTAINS
 !
 ! first calculate aa3_0_cup
 !
-      call cup_up_aa0(aa3_0,z,zu3_0,dby3_0,GAMMA3_0_CUP,t_cup, &
+      call cup_up_aa0(aa3_0,z,zu3_0,dby3_0,GAMMA3_CUP,t_cup, &
            kbcon3,ktop3,ierr5,           &
            itf,jtf,ktf, &
           its,ite, jts,jte, kts,kte)
@@ -3664,6 +3664,7 @@ CONTAINS
 !     cloud base pressure and max moist static energy pressure
 !     i.e., the depth (in mb) of the layer of negative buoyancy
       if(KBCON(I)-K22(I).eq.1)go to 27
+      if(iloop.eq.5 .and. (KBCON(I)-K22(I)).eq.0)go to 27
       PBCDIF=-P_cup(I,KBCON(I))+P_cup(I,K22(I))
       plus=max(25.,cap_max(i)-float(iloop-1)*cap_inc(i))
       if(iloop.eq.4)plus=cap_max(i)
@@ -3739,6 +3740,9 @@ CONTAINS
          do k=ktop(i)+1,ktf
            dby(i,k)=0.
          enddo
+         if(kbcon(i).eq.ktop(i))then
+            ierr(i)=55
+         endif
          endif
   42     CONTINUE
 

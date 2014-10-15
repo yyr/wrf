@@ -389,6 +389,17 @@ if [ -n "$WRF_VENUS" ] ; then
     compileflags="${compileflags}!-DPLANET!-DVENUS"
   fi
 fi
+if [ -n "$WRF_QUIETLY" ]; then
+  echo WRF_QUIETLY is now a synonym for WRF_LOG_BUFFERING
+  echo setting WRF_LOG_BUFFERING to 1...
+  export WRF_LOG_BUFFERING=1
+fi
+if [ -n "$WRF_LOG_BUFFERING" ]; then
+  if [ $WRF_LOG_BUFFERING = 1 ]; then
+    echo building WRF with support for buffering of log messages
+    compileflags="${compileflags}!-DWRF_LOG_BUFFERING=1"
+  fi
+fi
 if [ -n "$WRF_NMM_CORE" ]; then
   if [ $WRF_NMM_CORE = 1 ]; then
     if [ -n "$HWRF" ]; then
@@ -682,7 +693,7 @@ EOF
 
       if [ $CROSS_COMPILING -eq 1 ] ; then
         echo NOTE:
-        echo This installation NetCDF is 32-bit
+        echo This installation of NetCDF is 32-bit
         if [ \( $SFC_MULTI_ABI -ne 1 -a "$SFC_arch" = "64-bit" \) \
              -o \( $SCC_MULTI_ABI -ne 1 -a "$SCC_arch" = "64-bit" \) \
              -o \( $CCOMP_MULTI_ABI -ne 1 -a "$CCOMP_arch" = "64-bit" \) ] ; then
@@ -736,7 +747,7 @@ EOF
 
       if [ $CROSS_COMPILING -eq 1 ] ; then
         echo NOTE:
-        echo This installation NetCDF is 64-bit
+        echo This installation of NetCDF is 64-bit
         if [ \( $SFC_MULTI_ABI -ne 1 -a "$SFC_arch" != "64-bit" \) \
             -o \( $SCC_MULTI_ABI -ne 1 -a "$SCC_arch" != "64-bit" \) \
             -o \( $CCOMP_MULTI_ABI -ne 1 -a "$CCOMP_arch" != "64-bit" \) ]; then
@@ -757,7 +768,7 @@ EOF
     fi
 
     if [ $CROSS_COMPILING -eq 0 ] ; then
-      echo This installation NetCDF is $netcdf_arch
+      echo This installation of NetCDF is $netcdf_arch
       echo C compiler is $SCC_arch
       echo Fortran compiler is $SFC_arch
       echo It will build in $netcdf_arch
