@@ -31,6 +31,7 @@ dimspec    &       2     namelist=lagday                   z     lagday
 endif
 
 ifdef NMM_CORE=1
+dimspec    ndfi    1     namelist=dfi_time_dim             c     dfi time dimension
 dimspec    j       2     standard_domain                   y     south_north
 dimspec    k       3     standard_domain                   z     bottom_top
 #definitions for NMM slab arrays
@@ -68,5 +69,5 @@ dimspec    dust    2     namelist=kfuture                  z     klevs_for_dust
 dimspec    ]       2     namelist=kfire                    z     klevs_for_fire
 dimspec    %       2     namelist=kdvel                    z     klevs_for_dvel
 dimspec    airc    2     namelist=kemit_aircraft           z     ac_emissions_zdim
-dimspec    .       3     namelist=errosion_dim             z     dust_errosion_dimension
+dimspec    .       3     namelist=erosion_dim              z     dust_erosion_dimension
 endif

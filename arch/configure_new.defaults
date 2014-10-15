@@ -518,9 +518,9 @@ DMPARALLEL      =       # 1
 OMPCPP		=	# -D_OPENMP
 OMP		=	# -mp -Minfo=mp -Mrecursive
 OMPCC		=	# -mp
-SFC		=       pgf90
-SCC		=       pgcc
-CCOMP		=       pgcc
+SFC		=       pgf90 
+SCC		=       pgcc 
+CCOMP		=       pgcc 
 DM_FC		=	mpif90 -f90=$(SFC)
 DM_CC		=       mpicc -cc=$(SCC)
 FC              =       CONFIGURE_FC
@@ -677,7 +677,7 @@ CPP             =      cpp -C -P -xassembler-with-cpp
 AR              =      ar
 ARFLAGS         =      ru
 M4              =      m4 -B 14000
-RANLIB          =      ranlib
+RANLIB          =      ranlib -c
 CC_TOOLS        =      $(SCC) 
 
 ###########################################################
@@ -773,6 +773,7 @@ OMP		=	# -qsmp=noauto
 OMPCC		=	# -qsmp=noauto
 SFC		=       xlf90_r
 SCC		=       cc_r
+SC99		=	c99_r
 CCOMP		=       cc_r
 DM_FC		=	mpxlf90_r
 DM_CC		=       mpcc_r
@@ -832,7 +833,7 @@ ARCH_LOCAL      =       -DNONSTANDARD_SYSTEM_SUBR
 CFLAGS_LOCAL    =       -w -O3
 LDFLAGS_LOCAL   =
 # module load libfast to use Cray XT fast math library
-LIB_LOCAL       =       -lfast_mv
+#LIB_LOCAL       =       -lfast_mv
 CPLUSPLUSLIB    =       
 ESMF_LDFLAG     =       $(CPLUSPLUSLIB)
 # PGI recommended
@@ -1092,7 +1093,8 @@ RANLIB          =       ranlib
 CC_TOOLS        =       $(SCC) 
 
 LIB_EXTERNAL    = \
-                     ../external/io_netcdf/libwrfio_nf.a CONFIGURE_NETCDF_PATH/lib/libnetcdf.lib
+                     ../external/io_netcdf/libwrfio_nf.a CONFIGURE_NETCDF_PATH/lib/libnetcdf.lib \
+                     ../external/wavelet/libWavelet.a ../external/wavelet/lib_wavelet.a
 ESMF_IO_LIB     =    ../external/esmf_time_f90/libesmf_time.a
 LIB_BUNDLED     = \
                      ../external/fftpack/fftpack5/libfftpack.a \
