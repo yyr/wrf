@@ -45,6 +45,16 @@
 
 ! 1) very minor change to limits on autoconversion source of rain number when cloud water is depleted
 
+! WRFV3.5
+! hm/A. Ackerman bug fix 11/08/12
+
+! 1) for accelerated melting from collisions, should use rain mass collected by snow, not snow mass 
+!    collected by rain
+! 2) minor changes to some comments
+! 3) reduction of maximum-allowed ice concentration from 10 cm-3 to 0.3
+!    cm-3. This was done to address the problem of excessive and persistent
+!    anvil cirrus produced by the scheme.
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! THIS SCHEME IS A BULK DOUBLE-MOMENT SCHEME THAT PREDICTS MIXING
@@ -983,8 +993,8 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
      REAL, DIMENSION(KTS:KTE) ::  NSAGG     ! SELF-COLLECTION OF SNOW
      REAL, DIMENSION(KTS:KTE) ::  NPRC      ! CHANGE NC AUTOCONVERSION DROPLETS
      REAL, DIMENSION(KTS:KTE) ::  NPRC1      ! CHANGE NR AUTOCONVERSION DROPLETS
-     REAL, DIMENSION(KTS:KTE) ::  PRAI      ! CHANGE Q AUTOCONVERSION CLOUD ICE
-     REAL, DIMENSION(KTS:KTE) ::  PRCI      ! CHANGE Q ACCRETION CLOUD ICE BY SNOW
+     REAL, DIMENSION(KTS:KTE) ::  PRAI      ! CHANGE Q ACCRETION CLOUD ICE BY SNOW
+     REAL, DIMENSION(KTS:KTE) ::  PRCI      ! CHANGE Q AUTOCONVERSIN CLOUD ICE TO SNOW
      REAL, DIMENSION(KTS:KTE) ::  PSACWS    ! CHANGE Q DROPLET ACCRETION BY SNOW
      REAL, DIMENSION(KTS:KTE) ::  NPSACWS   ! CHANGE N DROPLET ACCRETION BY SNOW
      REAL, DIMENSION(KTS:KTE) ::  PSACWI    ! CHANGE Q DROPLET ACCRETION BY CLOUD ICE
@@ -1545,7 +1555,6 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
             PRACG(K) = 0.
             NPRACG(K) = 0.
             PSMLT(K) = 0.
-            EVPMS(K) = 0.
             PGMLT(K) = 0.
             EVPMG(K) = 0.
             PRACS(K) = 0.
@@ -1606,12 +1615,22 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
             UMR=MIN(UMR,9.1*dum)
             UNR=MIN(UNR,9.1*dum)
 
-            PRACS(K) = CONS31*(((1.2*UMR-0.95*UMS)**2+              &
-                  0.08*UMS*UMR)**0.5*RHO(K)*                     &
-                 N0RR(K)*N0S(K)/LAMS(K)**3*                    &
-                  (5./(LAMS(K)**3*LAMR(K))+                    &
-                  2./(LAMS(K)**2*LAMR(K)**2)+                  &
-                  0.5/(LAMS(K)*LAMR(K)**3)))
+! hm fix, 2/12/13
+! for above freezing conditions to get accelerated melting of snow,
+! we need collection of rain by snow (following Lin et al. 1983)
+!            PRACS(K) = CONS31*(((1.2*UMR-0.95*UMS)**2+              &
+!                  0.08*UMS*UMR)**0.5*RHO(K)*                     &
+!                 N0RR(K)*N0S(K)/LAMS(K)**3*                    &
+!                  (5./(LAMS(K)**3*LAMR(K))+                    &
+!                  2./(LAMS(K)**2*LAMR(K)**2)+                  &
+!                  0.5/(LAMS(K)*LAMR(K)**3)))
+
+            PRACS(K) = CONS41*(((1.2*UMR-0.95*UMS)**2+                   &
+                  0.08*UMS*UMR)**0.5*RHO(K)*                      &
+                  N0RR(K)*N0S(K)/LAMR(K)**3*                              &
+                  (5./(LAMR(K)**3*LAMS(K))+                    &
+                  2./(LAMR(K)**2*LAMS(K)**2)+                  &				 
+                  0.5/(LAMR(k)*LAMS(k)**3)))
 
 ! fix 053011, npracs no longer subtracted from snow
 !            NPRACS(K) = CONS32*RHO(K)*(1.7*(UNR-UNS)**2+            &
@@ -3863,7 +3882,12 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! HM ADD 1/10/06, ADD UPPER BOUND ON ICE NUMBER, THIS IS NEEDED
 ! TO PREVENT VERY LARGE ICE NUMBER DUE TO HOMOGENEOUS FREEZING
 ! OF DROPLETS, ESPECIALLY WHEN INUM = 1, SET MAX AT 10 CM-3
-          NI3D(K) = MIN(NI3D(K),10.E6/RHO(K))
+!          NI3D(K) = MIN(NI3D(K),10.E6/RHO(K))
+! HM, 12/28/12, LOWER MAXIMUM ICE CONCENTRATION TO ADDRESS PROBLEM
+! OF EXCESSIVE AND PERSISTENT ANVIL
+! NOTE: THIS MAY CHANGE/REDUCE SENSITIVITY TO AEROSOL/CCN CONCENTRATION
+          NI3D(K) = MIN(NI3D(K),0.3E6/RHO(K))
+
 ! ADD BOUND ON DROPLET NUMBER - CANNOT EXCEED AEROSOL CONCENTRATION
           IF (iinum.EQ.0.AND.IACT.EQ.2) THEN
           NC3D(K) = MIN(NC3D(K),(NANEW1+NANEW2)/RHO(K))

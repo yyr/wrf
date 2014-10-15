@@ -708,6 +708,8 @@ CONTAINS
       new_grid%is_intermediate = .FALSE.
       new_grid%have_displayed_alloc_stats = .FALSE.
 
+      new_grid%tiling_latch = .FALSE.  ! 20121003
+
       ! set up the pointers that represent the nest hierarchy
       ! set this up *prior* to calling the patching or allocation
       ! routines so that implementations of these routines can
@@ -943,6 +945,12 @@ CONTAINS
 #ifdef DM_PARALLEL
       CALL wrf_get_dm_communicator ( grid%communicator )
       CALL wrf_dm_define_comms( grid )
+#endif
+
+#if ( NMM_CORE==1 )
+      grid%interp_mp = .not. ( size(grid%f_ice)>1 .or. size(grid%f_rain)>1 .or. size(grid%f_rimef)>1 )
+#else
+      grid%interp_mp = .true.
 #endif
 
    END SUBROUTINE alloc_and_configure_domain
