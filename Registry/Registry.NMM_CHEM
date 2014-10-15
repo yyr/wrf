@@ -777,6 +777,7 @@ rconfig   integer s_sn                    namelist,domains	max_domains    1     
 rconfig   integer e_sn                    namelist,domains	max_domains    32      irh    "e_sn"          ""      ""
 rconfig   integer s_vert                  namelist,domains	max_domains    1       irh    "s_vert"                ""      ""
 rconfig   integer e_vert                  namelist,domains	max_domains    31      irh    "e_vert"                ""      ""
+rconfig   integer num_metgrid_soil_levels namelist,domains	1             4        irh    "num_metgrid_soil_levels"               "number of input levels or layers in 3D sm, st, sw arrays"      ""
 rconfig   real    dx                      namelist,domains     max_domains    200     h     "dx"        "X HORIZONTAL RESOLUTION"   "METERS"
 rconfig   real    dy                      namelist,domains   	max_domains    200     h     "dy"        "Y HORIZONTAL RESOLUTION"   "METERS"
 rconfig   integer grid_id                 namelist,domains	max_domains    1       irh    "id"            ""      ""
@@ -990,7 +991,7 @@ package   kesslerscheme mp_physics==1                -             moist:qv,qc,q
 package   linscheme     mp_physics==2                -             moist:qv,qc,qr,qi,qs,qg
 package   wsm3scheme    mp_physics==3                -             moist:qv,qc,qr
 package   wsm5scheme    mp_physics==4                -             moist:qv,qc,qr,qi,qs
-package   etampnew      mp_physics==5                -             moist:qv,qc,qr,qi,qs,qg
+package   etampnew      mp_physics==5                -             moist:qv,qc,qr,qs
 package   wsm6scheme    mp_physics==6                -             moist:qv,qc,qr,qi,qs,qg
 package   gsfcgcescheme mp_physics==7                -             moist:qv,qc,qr,qi,qs,qg
 package   thompson      mp_physics==8                -             moist:qv,qc,qr,qi,qs,qg;scalar:qni,qnr

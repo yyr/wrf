@@ -15,11 +15,12 @@
    USE module_configure, ONLY : grid_config_rec_type
    USE module_tiles, ONLY : set_tiles
 #ifdef DM_PARALLEL
-   USE module_dm, ONLY : wrf_dm_min_real, ntasks_x, ntasks_y, &
+   USE module_dm, ONLY : wrf_dm_min_real, wrf_dm_maxval, ntasks_x, ntasks_y, &
         local_communicator_periodic, local_communicator, mytask, ntasks 
 #else
    USE module_dm, ONLY : wrf_dm_min_real
 #endif
+   USE module_comm_dm
 
    USE module_physics_init
 #ifdef WRF_CHEM
@@ -636,6 +637,7 @@
                       grid%DL_U_BEP,grid%SF_BEP,grid%VL_BEP,                           & !multi-layer urban
                       grid%TML,grid%T0ML,grid%HML,grid%H0ML,grid%HUML,grid%HVML,     & !Optional oml
                       grid%itimestep, grid%fdob,            &
+                      t00, p00, a,                      & ! for obs_nudge base state
                       grid%TYR, grid%TYRA, grid%TDLY, grid%TLAG, grid%NYEAR, grid%NDAY,grid%tmn_update, &
                       grid%achfx, grid%aclhf, grid%acgrdflx                 &
                       )

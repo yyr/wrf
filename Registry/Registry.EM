@@ -164,7 +164,7 @@ state    real   ph             ikjb     dyn_em      2         Z     \
 state    real   phb            ikj     dyn_em      1         Z     irhdus "phb"  "base-state geopotential"  "m2 s-2"
 state    real   phb_fine       ikj     dyn_em      1         Z      -     "phb_fine"  "for nesting, temp holding interpolated coarse grid phb"  "m2 s-2"
 state    real   ph0            ikj     dyn_em      1         Z      r     "ph0"  "initial geopotential"     "m2 s-2"
-state    real   php            ikj     dyn_em      1         Z      r     "php"  "geopotential"             "m2 s-2"
+state    real   php            ikj     dyn_em      1         -      r     "php"  "geopotential"             "m2 s-2"
 i1       real   ph_tend        ikj     dyn_em      1         Z 
 i1       real   ph_tendf       ikj     dyn_em      1         Z 
 i1       real   ph_save        ikj     dyn_em      1         Z 
@@ -426,6 +426,8 @@ state   real   soil_levels    i{lin}j    misc          1     Z     i1      "SOIL
 state   real   st             i{lin}j    misc          1     Z     i1      "ST"            "SOIL TEMPERATURES"   "K"
 state   real   sm             i{lin}j    misc          1     Z     i1      "SM"            "SOIL MOISTURES"      "m3 m-3"
 state   real   sw             i{lin}j    misc          1     Z     i1      "SW"            "SOIL LIQUIDS"        "m3 m-3"
+state   real   soilt          i{lin}j    misc          1     Z     i1      "SOILT"         "RUC SOIL TEMPERATURES"  "K"
+state   real   soilm          i{lin}j    misc          1     Z     i1      "SOILM"         "RUC SOIL MOISTURES"  "m3 m-3"
 state   real   sm000007            ij    misc          1     -     i1      "SM000007"      "LAYER SOIL MOISTURE" "m3 m-3"
 state   real   sm007028            ij    misc          1     -     i1      "SM007028"      "LAYER SOIL MOISTURE" "m3 m-3"
 state   real   sm028100            ij    misc          1     -     i1      "SM028100"      "LAYER SOIL MOISTURE" "m3 m-3"
@@ -477,8 +479,8 @@ state   real   snoalb              ij    misc          1     -     i012r   "SNOA
 state   real   slopecat            ij    misc          1     -     i12     "SLOPECAT"      "SLOPE CATEGORY"  ""
 state   real   toposoil            ij    misc          1     -     i12     "SOILHGT"       "ELEVATION OF LSM DATA"  "m"
 state   real   landusef            iuj   misc          1     Z     i012r   "LANDUSEF"      "LANDUSE FRACTION BY CATEGORY"  ""
-state   real   soilctop            isj   misc          1     Z     i012    "SOILCTOP"      "SOIL CAT FRACTION (TOP)"  ""
-state   real   soilcbot            isj   misc          1     Z     i012    "SOILCBOT"      "SOIL CAT FRACTION (BOTTOM)"  ""
+state   real   soilctop            isj   misc          1     Z     i012r   "SOILCTOP"      "SOIL CAT FRACTION (TOP)"  ""
+state   real   soilcbot            isj   misc          1     Z     i012r   "SOILCBOT"      "SOIL CAT FRACTION (BOTTOM)"  ""
 state   real   soilcat             ij    misc          1     -     i12     "SOILCAT"       "SOIL CAT DOMINANT TYPE" ""
 state   real   vegcat              ij    misc          1     -     i12     "VEGCAT"        "VEGETATION CAT DOMINANT TYPE" ""
 #---------------------------------------------------------------------------------------------------------------------------------------
@@ -798,10 +800,10 @@ state   real    v_frame        -       misc         1         -     ir        "v
 # resolve this how?  Have the real program throw a switch to tell the code to get it
 # from the metadata?  Otherwise it's a field?
 state   real    p_top          -       misc         -         -     irh       "p_top"                 "PRESSURE TOP OF THE MODEL"  "Pa"
-state   real    t00            -       misc         -         -     irh       "t00"                   "BASE STATE TEMPERATURE   "  "K"
-state   real    p00            -       misc         -         -     irh       "p00"                   "BASE STATE PRESURE"         "Pa"
-state   real    tlp            -       misc         -         -     irh       "tlp"                   "BASE STATE LAPSE RATE    "  ""
-state   real    tiso           -       misc         -         -     irh       "tiso"                  "TEMP AT WHICH THE BASE T TURNS CONST"  "K"
+state   real    t00            -       misc         -         -     i02rh     "t00"                   "BASE STATE TEMPERATURE   "  "K"
+state   real    p00            -       misc         -         -     i02rh     "p00"                   "BASE STATE PRESURE"         "Pa"
+state   real    tlp            -       misc         -         -     i02rh     "tlp"                   "BASE STATE LAPSE RATE    "  ""
+state   real    tiso           -       misc         -         -     i02rh     "tiso"                  "TEMP AT WHICH THE BASE T TURNS CONST"  "K"
 state   real    max_msftx      -       misc         -         -      rh       "max_mstfx"             "Max map factor in domain"  ""
 state   real    max_msfty      -       misc         -         -      rh       "max_mstfy"             "Max map factor in domain"  ""
                                                 
@@ -1028,7 +1030,7 @@ state   real    div            ikj      misc        1         -     r         "d
 state   real    BN2            ikj      misc        1         -     r         "BN2"                   "BRUNT-VAISALA FREQUENCY"                                         "s-2"
 state  logical warm_rain        -       misc        1         -     -         "warm_rain"              "WARM_RAIN_LOGICAL"
 state  logical adv_moist_cond   -       misc        1         -     -         "adv_moist_cond"         "ADVECT MOIST CONDENSATES LOGICAL"
-state  integer save_topo_from_real -    dyn_em	    1         -    irh        "save_topo_from_real"    "(1=original topo from real/0=topo modified by WRF) flag if input has original topography from real"      "flag"
+state  integer save_topo_from_real -    dyn_em	    1         -    irh        "save_topo_from_real"    "1=original topo from real/0=topo modified by WRF"      "flag"
 
 ## FDDA variables
 
@@ -1259,11 +1261,11 @@ rconfig   real      max_dz          namelist,domains    1               1000.
 rconfig   logical insert_bogus_storm   namelist,tc     	1              .false. irh    "insert_bogus_storm"   "T/F for inserting a bogus typhoon"    "flag"
 rconfig   logical remove_storm         namelist,tc     	1              .false. irh    "remove_storm"  "T/F for only removing the original typhoon"  "flag"
 rconfig   integer num_storm            namelist,tc     	1              1       irh    "num_storm"     "Number of bogus typhoons"  ""
-rconfig   real    latc_loc             namelist,tc     	1              -999.   irh    "latc_loc"      "center latitude of the bogus tyhoon"  "DEGREES"
-rconfig   real    lonc_loc             namelist,tc     	1              -999.   irh    "lonc_loc"      "center longitude of the bogus tyhoon"  "DEGREES"
-rconfig   real    vmax_meters_per_second   namelist,tc  1              -999.   irh    "vmax_meters_per_second"  "vmax of bogus storm in meters per second"  ""
-rconfig   real    rmax                 namelist,tc     	1              -999.   irh    "rmax"  "maximum radius outward from storm center"  ""
-rconfig   real    vmax_ratio           namelist,tc      1              -999.   irh    "vmax_ratio"  ""  ""
+rconfig   real    latc_loc             namelist,tc     	max_bogus      -999.   irh    "latc_loc"      "center latitude of the bogus tyhoon"  "DEGREES"
+rconfig   real    lonc_loc             namelist,tc     	max_bogus      -999.   irh    "lonc_loc"      "center longitude of the bogus tyhoon"  "DEGREES"
+rconfig   real    vmax_meters_per_second   namelist,tc  max_bogus      -999.   irh    "vmax_meters_per_second"  "vmax of bogus storm in meters per second"  ""
+rconfig   real    rmax                 namelist,tc     	max_bogus      -999.   irh    "rmax"  "maximum radius outward from storm center"  ""
+rconfig   real    vmax_ratio           namelist,tc      max_bogus      -999.   irh    "vmax_ratio"  ""  ""
 
 
 # Physics
@@ -1381,6 +1383,14 @@ rconfig   integer     obs_nudge_mois      namelist,fdda            max_domains  
 rconfig   real        obs_coef_mois       namelist,fdda            max_domains    0       rh       "obs_coef_mois"     "Moisture-nudging coef for domain"     "s-1"
 rconfig   integer     obs_nudge_pstr      namelist,fdda            max_domains    0       rh       "obs_nudge_pstr"    "Not used"                             ""
 rconfig   real        obs_coef_pstr       namelist,fdda            max_domains    0       rh       "obs_coef_pstr"     "Not used"                             ""
+rconfig   integer     obs_no_pbl_nudge_uv namelist,fdda            max_domains    0       rh       "obs_no_pbl_nudge_uv" "1=no wind-nudging within pbl"          ""
+rconfig   integer     obs_no_pbl_nudge_t  namelist,fdda            max_domains    0       rh       "obs_no_pbl_nudge_t"  "1=no temperature-nudging within pbl"   ""
+rconfig   integer     obs_no_pbl_nudge_q  namelist,fdda            max_domains    0       rh       "obs_no_pbl_nudge_q"  "1=no moisture-nudging within pbl"      ""
+rconfig   real        obs_sfcfact         namelist,fdda            1              1.0     h        "obs_sfcfact"       "Scale factor applied to time window for surface obs"     ""
+rconfig   real        obs_sfcfacr         namelist,fdda            1              1.0     h        "obs_sfcfacr"       "Scale factor applied to horiz radius of influence for surface obs"     ""
+rconfig   real        obs_dpsmx           namelist,fdda            1              7.5     h        "obs_dpsmx"         "Max pressure change allowed within horiz radius of influence"     "centibars"
+rconfig   real        obs_lml_ht1         namelist,fdda            1              100.    h        "obs_lml_ht1"       "Height 1 for spreading of lowest model level obs"     "km"
+rconfig   real        obs_lml_ht2         namelist,fdda            1              100.    h        "obs_lml_ht2"       "Height 2 for spreading of lowest model level obs"     "km"
 rconfig   real        obs_rinxy           namelist,fdda            max_domains    0       rh       "obs_rinxy"         "Horizontal radius of influence"       "km"
 rconfig   real        obs_rinsig          namelist,fdda            1              0       h        "obs_rinsig"        "Vertical radius of influence"         "sigma"
 rconfig   real        obs_twindo          namelist,fdda            max_domains    0       rh       "obs_twindo"        "Half-period time window for nudging"  "hrs"
@@ -1460,7 +1470,7 @@ rconfig   real    base_temp               namelist,dynamics	1             290.  
 rconfig   real    base_lapse              namelist,dynamics	1              50.     h    "base_lapse" "Base state temperature difference between base pres and 1/e of atm depth - do not change, real only"      "K"
 rconfig   real    iso_temp                namelist,dynamics	1               0.     h    "iso_temp"   "Isothermal temperature in stratosphere, real only"      "K"
 rconfig   logical use_baseparam_fr_nml    namelist,dynamics	1            .false.  irh   "use_baseparam_fr_nml"    ""   ""
-rconfig   real    fft_filter_lat          namelist,dynamics     1              45.     h    "fft_filter_lat"   ""   "grid latitude to start polar filter"
+rconfig   real    fft_filter_lat          namelist,dynamics     1              91.     h    "fft_filter_lat"   ""   "grid latitude to start polar filter"
 rconfig   logical rotated_pole            namelist,dynamics     1            .false.  irh   "rotated_pole"    ""   ""
 rconfig   logical do_coriolis             namelist,dynamics	max_domains  .true.   irh  "do_coriolis"    ""   ""
 rconfig   logical do_curvature            namelist,dynamics	max_domains  .true.   irh  "do_curvature"   ""   ""
@@ -1501,6 +1511,8 @@ rconfig   real    truelat1                derived                  max_domains  
 rconfig   real    truelat2                derived                  max_domains    0       -        "true_lat2"             "second standard parallel"      "degrees, negative is south"
 rconfig   real    moad_cen_lat            derived                  max_domains    0       -        "moad_cen_lat"             "center latitude of the most coarse grid"      "degrees, negative is south"
 rconfig   real    stand_lon               derived                  max_domains    0       -        "stand_lon"             "standard longitude, parallel to j-direction, perpendicular to i-direction "      "degrees, negative is west"
+rconfig   real    pole_lat                derived                  max_domains    0       -        "pole_lat"              "projection info: latitude of pole" "degrees, positive north"
+rconfig   real    pole_lon                derived                  max_domains    0       -        "pole_lon"              "projection info: longitude of pole" "degrees, positive east"
 rconfig   integer  FLAG_METGRID           derived                      1          0       -        "FLAG_METGRID"         "Flag in global attributes for metgrid data"
 rconfig   integer  FLAG_SNOW              derived                      1          0       -        "FLAG_SNOW"             "Flag for snow in the global attributes for metgrid data"
 rconfig   integer  FLAG_PSFC              derived                      1          0       -        "FLAG_PSFC"             "Flag for surface pressure in the global attributes for metgrid data"
@@ -1545,7 +1557,7 @@ package   kesslerscheme mp_physics==1                -             moist:qv,qc,q
 package   linscheme     mp_physics==2                -             moist:qv,qc,qr,qi,qs,qg
 package   wsm3scheme    mp_physics==3                -             moist:qv,qc,qr
 package   wsm5scheme    mp_physics==4                -             moist:qv,qc,qr,qi,qs
-package   etampnew      mp_physics==5                -             moist:qv,qc,qr,qi,qs,qg;scalar:qt;state:f_ice_phy,f_rain_phy,f_rimef_phy
+package   etampnew      mp_physics==5                -             moist:qv,qc,qr,qs;scalar:qt;state:f_ice_phy,f_rain_phy,f_rimef_phy
 package   wsm6scheme    mp_physics==6                -             moist:qv,qc,qr,qi,qs,qg
 package   gsfcgcescheme mp_physics==7                -             moist:qv,qc,qr,qi,qs,qg
 package   thompson      mp_physics==8                -             moist:qv,qc,qr,qi,qs,qg;scalar:qni,qnr
@@ -1560,7 +1572,7 @@ package   kesslerscheme_dfi mp_physics_dfi==1        -             dfi_moist:dfi
 package   linscheme_dfi     mp_physics_dfi==2        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr,dfi_qi,dfi_qs,dfi_qg
 package   wsm3scheme_dfi    mp_physics_dfi==3        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr
 package   wsm5scheme_dfi    mp_physics_dfi==4        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr,dfi_qi,dfi_qs
-package   etampnew_dfi      mp_physics_dfi==5        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr,dfi_qi,dfi_qs,dfi_qg;dfi_scalar:dfi_qt
+package   etampnew_dfi      mp_physics_dfi==5        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr,dfi_qs;dfi_scalar:dfi_qt
 package   wsm6scheme_dfi    mp_physics_dfi==6        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr,dfi_qi,dfi_qs,dfi_qg
 package   gsfcgcescheme_dfi mp_physics_dfi==7        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr,dfi_qi,dfi_qs,dfi_qg
 package   thompson_dfi      mp_physics_dfi==8        -             dfi_moist:dfi_qv,dfi_qc,dfi_qr,dfi_qi,dfi_qs,dfi_qg;dfi_scalar:dfi_qni,dfi_qnr
@@ -1742,7 +1754,7 @@ period    PERIOD_EM_COUPLE_B dyn_em 3:ph_1,ph_2,w_1,w_2,t_1,t_2,u_1,u_2,v_1,v_2,
 #halo      em_shift_halo_x  dyn_em 48:imask_nostag,imask_xstag,imask_ystag,imask_xystag,u_2,v_2,t_2
 
 # For observational nudging
-halo      HALO_OBS_NUDGE dyn_em 24:ph_2,p,uratx,vratx,tratx
+halo      HALO_OBS_NUDGE dyn_em 24:ph_2,p,uratx,vratx,tratx,kpbl
 
 # Periodic Boundary Communications
 
@@ -1794,6 +1806,13 @@ typedef fdob_type integer REFPRT(max_domains)   # reference obs index for diagno
 typedef fdob_type real    WINDOW       # time window half-period for nudging (in minutes) 
 typedef fdob_type real    RTLAST       # time in hours of last obs used in current model step
 typedef fdob_type real    DATEND       # time in minutes after which data are asuumed to have ended
+typedef fdob_type logical NUDGE_UV_PBL # Flag for wind nudging within the PBL
+typedef fdob_type logical NUDGE_T_PBL  # Flag for temperature nudging within the PBL
+typedef fdob_type logical NUDGE_Q_PBL  # Flag for moisture nudging within the PBL
+typedef fdob_type real    SFCFACT      # scale factor applied to time window for surface obs
+typedef fdob_type real    SFCFACR      # scale factor applied to horiz radius of influence for surface obs
+typedef fdob_type real    LML_OBS_HT1_LEV  # base-state model vertical coordinate of LML_OBS_HT1
+typedef fdob_type real    LML_OBS_HT2_LEV  # base-state model vertical coordinate of LML_OBS_HT2
 typedef fdob_type real    RINFMN       # minimum radius of influence
 typedef fdob_type real    RINFMX       # maximum radius of influence
 typedef fdob_type real    PFREE        # pressure level (cb) where terrain effect becomes small
